@@ -14,8 +14,9 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Install LLVM / Clang
-        run: choco install llvm -y
+      - name: Install LLVM, Clang & NASM
+        run: |
+          choco install llvm nasm -y
 
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@stable
@@ -23,23 +24,25 @@ jobs:
           toolchain: 1.75.0
           targets: x86_64-pc-windows-msvc
 
+      - name: Install flutter_rust_bridge_codegen
+        run: |
+          cargo install flutter_rust_bridge_codegen --version 1.80.1 --features "chrono"
+
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.24.5'
           channel: 'stable'
 
-      - name: Set up VCPKG and Cache
-        run: |
-          vcpkg integrate install
-
-      - name: Build RustDesk Client
+      - name: Prepare vcpkg & Build RustDesk
         shell: bash
         env:
+          VCPKG_ROOT: C:/vcpkg
           RENDEZVOUS_SERVER: ${{ vars.RENDEZVOUS_SERVER || secrets.RENDEZVOUS_SERVER }}
           RS_PUB_KEY: ${{ vars.RS_PUB_KEY || secrets.RS_PUB_KEY }}
         run: |
-          python3 build.py --portable --flutter
+          export PATH="$PATH:$HOME/.cargo/bin"
+          python build.py --portable --flutter
 
       - name: Upload Windows Executable Artifact
         uses: actions/upload-artifact@v4
@@ -48,5 +51,5 @@ jobs:
           path: |
             target/release/rustdesk.exe
             libs/portable/*.exe
-            build/windows/runner/Release/
+            build/windows/runner/Release/*.exe
           if-no-files-found: warn
